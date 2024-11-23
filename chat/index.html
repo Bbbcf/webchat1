@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .input-area {
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+        }
+        input {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="messages" id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Nhập tin nhắn..." />
+            <button id="send-button">Gửi</button>
+            <button id="logout-button">Đăng xuất</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbevc1tvucj4SxX0Ejof3XGXbkOR9p8ZU",
+            authDomain: "webchat-354d8.firebaseapp.com",
+            databaseURL: "https://webchat-354d8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "webchat-354d8",
+            storageBucket: "webchat-354d8.firebasestorage.app",
+            messagingSenderId: "1005682578301",
+            appId: "1:1005682578301:web:ca5ff901b74ee9a78cb214",
+            measurementId: "G-XP8PC32VMF"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const auth = getAuth(app);
+
+        const messagesRef = ref(database, 'messages/');
+
+        // Lắng nghe thay đổi trong cơ sở dữ liệu
+        onValue(messagesRef, (snapshot) => {
+            const messagesElement = document.getElementById('messages');
+            messagesElement.innerHTML = ""; // Xóa nội dung hiện tại
+
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message';
+                messageElement.textContent = `${data.user}: ${data.text}`;
+                messagesElement.appendChild(messageElement);
+            });
+
+            // Cuộn xuống tin nhắn mới nhất
+            messagesElement.scrollTop = messagesElement.scrollHeight;
+        });
+
+        document.getElementById('send-button').addEventListener('click', () => {
+            const input = document.getElementById('message-input');
+            const messageText = input.value.trim();
+            if (messageText !== "") {
+                const user = auth.currentUser.email.split('@')[0]; // Lấy tên người dùng
+                const newMessageRef = push(messagesRef);
+                set(newMessageRef, {
+                    user: user,
+                    text: messageText
+                });
+                input.value = ""; // Xóa input
+            }
+        });
+
+        // Xử lý đăng xuất với lệnh "/logout confirm"
+        document.getElementById('message-input').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                const messageText = event.target.value.trim();
+                if (messageText === '/logout confirm') {
+                    signOut(auth).then(() => {
+                        window.location.href = "../index.html"; // Quay lại trang đăng nhập
+                    }).catch((error) => {
+                        console.error("Lỗi đăng xuất: ", error);
+                    });
+                }
+            }
+        });
+
+        // Kiểm tra trạng thái đăng nhập
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "../index.html"; // Nếu chưa đăng nhập, quay về trang đăng nhập
+            }
+        });
+    </script>
+</body>
+</html>
+
